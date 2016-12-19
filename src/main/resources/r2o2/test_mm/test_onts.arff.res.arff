@@ -1,0 +1,10 @@
+@relation input-ontologies
+
+@attribute ontology string
+@attribute pred_time numeric
+@attribute actual_time numeric
+
+@data
+0f50cfb0-4be7-4239-8816-b5e06f63beb7_erativeOCL.owl_functional.owl,6.559528,0
+f544de7d-4b3e-47cd-b543-69e573e4d925_tions_v0.2.owl_functional.owl,6.329501,0
+approximated_50c9ffca-2132-4434-afab-d4ce20cc2714_SUMOLite.owl_functional.owl,6.448494,0

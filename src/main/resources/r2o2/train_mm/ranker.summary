@@ -1,0 +1,11 @@
+#Num of labels: 7
+#Num of instances: 2052
+#Num of attributes (incl. target att): 30
+
+#<Algorithms>, <P@1>
+kNN,0.994
+RankingViaRegression,0.989
+RPC (DecisionStump),0.988
+BinaryPCT,0.988
+BinaryART,0.986
+ARTForests,0.995

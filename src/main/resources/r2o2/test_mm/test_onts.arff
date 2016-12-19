@@ -1,0 +1,12 @@
+@relation input-ontologies
+
+@attribute ontology string
+@attribute pred_time numeric
+@attribute actual_time numeric
+
+@data
+00001.owl_functional.owl,-1,-1
+00002.owl_functional.owl,-1,-1
+00003.owl_functional.owl,-1,-1
+00004.owl_functional.owl,-1,-1
+00005.owl_functional.owl,-1,-1
