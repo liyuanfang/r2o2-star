@@ -1,18 +1,16 @@
-package edu.monash.infotech.r2o2.prediction;
+package edu.monash.infotech.r2o2.demo;
 
 import com.csvreader.CsvReader;
+import com.google.common.base.Charsets;
+import com.google.common.hash.Hashing;
 import org.apache.commons.math3.stat.StatUtils;
 import org.apache.commons.math3.stat.correlation.PearsonsCorrelation;
-import org.apache.commons.math3.util.Pair;
 import weka.core.*;
 import weka.filters.Filter;
 import weka.filters.unsupervised.attribute.NumericTransform;
 import weka.filters.unsupervised.attribute.Remove;
 
-import java.io.BufferedReader;
-import java.io.BufferedWriter;
-import java.io.FileReader;
-import java.io.FileWriter;
+import java.io.*;
 import java.util.*;
 
 /**
@@ -24,141 +22,42 @@ public class Preprocessor {
     private double _maxs[];
     private String _dupOntFile;
 
-    public Instances transform(String metricFile, String trainMetricPropertyFile, String metricValues) throws Exception {
-
-        // step 1: read the properties generated from the training data regarding what transformation has been applied to the training data.
-        String logAttributes = "";
-        List<String> normInfo = new ArrayList();
-        String finalAttributes = "";
-
-        BufferedReader reader = new BufferedReader(new FileReader(trainMetricPropertyFile));
-        String line = "";
-        boolean isNormInfoAvailable = false;
-        while ((line = reader.readLine()) != null) {
-            if (line.startsWith("#log")) {
-                int index = line.indexOf(":");
-                logAttributes = line.substring(index + 1).trim();
-            } else if (line.startsWith("#norm")) {
-                isNormInfoAvailable = true;
-            } else if (line.startsWith("#final metrics")) {
-                //System.out.println(line);
-                isNormInfoAvailable = false;
-                int index = line.indexOf(":");
-                finalAttributes = line.substring(index + 1).trim();
-            } else if (isNormInfoAvailable == true) {
-                normInfo.add(line);
-            }
-        }
-
-        // step 2: read metric values of the test ontologies and transform them into Weka instances
-        CsvReader csvReader = new CsvReader(metricFile);
-        csvReader.readHeaders();
-        String headers[] = csvReader.getHeaders();
-
-        Instances instances = createWekaAttributes(headers);
-
-        if (metricValues.length() > 0) {
-            // if metrics values are given then we use them
-            String values[] = metricValues.split(",");
-            instances.add(new DenseInstance(1, stringToDouble(instances, values)));
-        } else {
-            //otherwise such values are provided in the metric file
-            while (csvReader.readRecord()) {
-                String data[] = csvReader.getValues();
-                instances.add(new DenseInstance(1, stringToDouble(instances, data)));
-            }
-        }
-        csvReader.close();
-
-        // step 3: apply log-transformation
-        Instances newData = new Instances(instances);
-        if (logAttributes.length() > 0) {
-            NumericTransform filter = new NumericTransform();
-            String[] params = new String[6];
-            params[0] = "-R"; // range of attributes to make numeric
-            params[1] = logAttributes;
-            params[2] = "-C";
-            params[3] = "java.lang.Math";
-            params[4] = "-M";
-            params[5] = "log1p";
-            filter.setOptions(params);
-            filter.setInputFormat(instances);
-            newData = Filter.useFilter(instances, filter);
-        }
-
-        // step 5: normalisation
-        for (int i = 0; i < newData.numInstances(); i++) {
-            Instance instance = newData.instance(i);
-            for (int k = 1; k < instance.numAttributes(); k++) {
-                double v = instance.value(k);
-                double norm = 0;
-
-                String info[] = normInfo.get(k - 1).split(",");
-                double min = Double.parseDouble(info[0].substring(info[0].indexOf("=") + 1));
-                double max = Double.parseDouble(info[1].substring(info[1].indexOf("=") + 1));
-
-                if (max - min != 0) {
-                    norm = (v - min) / (max - min);
-                }
-                instance.setValue(k, norm);
-            }
-        }
-
-        // step 6: leave only metrics that are the ones finally used in the training data after removing bad metrics
-        HashSet<Integer> removalMetricIndices = new HashSet<>();
-        Set<String> finalMetrics = new HashSet(Arrays.asList(finalAttributes.split(",")));
-        for (int k = 0; k < newData.numAttributes(); k++) {
-            if (!finalMetrics.contains(newData.attribute(k).name())) {
-                removalMetricIndices.add(k);
-            }
-        }
-
-        Instances finaData = removeMetrics(newData, removalMetricIndices);
-        return finaData;
-    }
-
-    public Instances perform(String metricFile) throws Exception {
+    /**
+     * Function for defining preprocessing steps
+     * @param metricFile The input ontology metrics file
+     * @param predefined_metric_file The pre-chosen metrics file
+     * @return Ontology instances after the preprocessing steps
+     */
+    public Instances perform(String metricFile, File predefined_metric_file) throws Exception {
 
         // step 1: remove duplicated ones
         Instances instances = removeDuplicatedMetrics(metricFile);
 
         // step 2: normalisation
-        Pair<Instances, StringBuilder> normedInstanceResult = norm(instances);
-        //System.out.println(normedInstances);
+        Instances normedInstances = norm(instances);
 
-        // step 3: remove the near-zero predictors & remove highly correlated predictors
-        Instances finalInstances = removeBadMetrics(normedInstanceResult.getKey());
-
-        // step 4: write the results into a file for the use to testing data:
-        // 1) write on which metrics the log-transformation has been applied,
-        // 2) write on which metrics we've chosen finally
-        writeChosenMetricProperty(metricFile + ".properties", normedInstanceResult.getValue(), finalInstances);
+        // step 3: remove the near-zero predictors & remove highly correlated predictors.
+        // If the pre-predefined_metric_file is given, we skip this step.
+        Instances finalInstances = null;
+        if (predefined_metric_file == null)
+            finalInstances = removeBadMetrics(normedInstances);
+        else
+            finalInstances = normedInstances;
 
         return finalInstances;
     }
 
-    private void writeChosenMetricProperty(String outFileName, StringBuilder propertyInfo, Instances finalInstances) throws Exception {
-
-        BufferedWriter writer = new BufferedWriter(new FileWriter(outFileName));
-
-        // first write metrics that log-transformation has been applied & normalisation info
-        writer.write(propertyInfo.toString());
-
-        // second write metrics after removing the bad metrics
-        writer.write("#final metrics:");
-        for (int i = 0; i < finalInstances.numAttributes() - 1; i++) {
-            writer.write(finalInstances.attribute(i).name() + ",");
-        }
-        writer.write(finalInstances.attribute(finalInstances.numAttributes() - 1).name() + "\n");
-        writer.close();
-    }
-
+    /**
+     * Remove duplicated ontologies in terms of metric values of the ontologies in the input file
+     * @param metricFile The input ontology metrics file
+     * @return Ontology instances after removing the duplicated ontologies
+     */
     private Instances removeDuplicatedMetrics(String metricFile) throws Exception {
 
-        // key: hashcode of all metric values of each instance, value: ontology name
+        // key: all metric values of each instance, value: ontology name
         HashMap<String, String> keyMap = new HashMap<>();
 
-        // key: onotolgy, value: the ontology name kept in the "keys" variable
+        // key: ontology, value: the ontology name kept in the "keys" variable
         HashMap<String, String> ontNameMap = new HashMap<>();
 
         CsvReader csvReader = new CsvReader(metricFile);
@@ -191,19 +90,57 @@ public class Preprocessor {
         return instances;
     }
 
-    private void writeDupOntSet(String metricFile, HashMap<String, String> ontNameMap) throws Exception {
+    private Instances removeDuplicatedInstances(Instances data, String range) throws Exception {
+
+        Instances newData = new Instances (data, 0);
+
+        // get used attribute indices to check duplication
+        Set<Integer> indexset = new HashSet<>();
+        String indices[] = range.split(",");
+        for (String s: indices) {
+            indexset.add(Integer.parseInt(s));
+        }
+
+        // key: hashcode of attribute values of specified indices, value: instance
+        Set<Integer> keyMap = new HashSet();
+
+        for (int i = 0; i < data.numInstances(); i++) {
+            int key = generateKeyForInstance(data.instance(i), indexset);
+            if (!keyMap.contains(key)) {
+                keyMap.add(key);
+                newData.add(data.instance(i));
+            }
+        }
+
+        return newData;
+    }
+
+    /**
+     * Write pairs of ontologies names that indicate which ontologies have duplicated ones. In a pair, if the first ontology name is the same
+     * with the second name, it means the first name doesn't have any duplicated one. Otherwise, the second name indicates the duplicated one with the
+     * first name.
+     * @param metricFile The ontology metrics file name
+     * @param ontNameMap The set of pairs showing which ontologies have duplcated ones.
+     * @throws Exception
+     */
+    private void writeDupOntSet(String metricFile, HashMap<String,String> ontNameMap) throws Exception {
 
         _dupOntFile = metricFile + ".dup";
         BufferedWriter writer = new BufferedWriter(new FileWriter(metricFile + ".dup"));
         Iterator it = ontNameMap.entrySet().iterator();
         while (it.hasNext()) {
-            Map.Entry<String, String> entry = (Map.Entry<String, String>) it.next();
+            Map.Entry<String, String> entry = (Map.Entry<String,String>) it.next();
             writer.write(entry.getKey() + "," + entry.getValue() + "\n");
         }
         writer.close();
     }
 
-    private Instances removeBadMetrics(Instances data) throws Exception {
+    /**
+     * Remove nearzero variance metrics as well as highly-correlated metrics
+     * @param data The set of ontologies where each is represented its log-scaled metric values
+     * @return Instances after applying this function
+     */
+    private Instances removeBadMetrics (Instances data) throws Exception {
 
         // step 1: remove near-zero variance metrics
         Instances data1 = removeByNearZeroVar(data);
@@ -214,8 +151,35 @@ public class Preprocessor {
         return data2;
     }
 
-    private Instances removeByNearZeroVar(Instances data) throws Exception {
-        Instances newData = new Instances(data);
+    public Instances getInstancesByMetrics (Instances data, File metricFile) throws Exception {
+
+        BufferedReader reader = new BufferedReader(new FileReader(metricFile));
+        String line = "";
+        Set<String> metricNames = new HashSet<String>();
+        while ((line = reader.readLine()) != null) {
+            String metricName = line.split(" ")[1];
+            metricNames.add(metricName.toLowerCase());
+        }
+        reader.close();
+        System.out.println("# of important metrics given:" + metricNames.size());
+        System.out.println("# of data metrics:" + data.numAttributes());
+
+        HashSet<Integer> removalMetricIndices = new HashSet<>();
+        for (int i = 1; i < data.numAttributes(); i++) {
+            String metricName = data.attribute(i).name().toLowerCase();
+            if (!metricNames.contains(metricName)) {
+                removalMetricIndices.add(i);
+            }
+        }
+
+        data = removeMetrics(data, removalMetricIndices);
+        System.out.println("after removing - # of data metrics:" + data.numAttributes());
+
+        return data;
+    }
+
+    private Instances removeByNearZeroVar (Instances data) throws Exception {
+        Instances newData = new Instances (data);
 
         HashSet<Integer> removalMetricIndices = new HashSet<>();
 
@@ -225,29 +189,34 @@ public class Preprocessor {
             double values[] = newData.attributeToDoubleArray(i);
             double variance = StatUtils.variance(values);
             if (Double.isNaN(variance)) variance = 0;
+            //System.out.println("attribute:" + newData.attribute(i).name() + ", variance=" + variance);
             if (variance == 0) {
+                //System.out.println("zero variance attribute:" + newData.attribute(i).name() + ", variance=" + variance);
                 removalMetricIndices.add(i);
                 continue;
             }
 
             // step 2: remove metrics that have few unique values related to the number of samples (< 0.1)
             double uniqueValueNum = calUniqueValueNum(values);
-            double uniqueRatio = uniqueValueNum / values.length;
+            double uniqueRatio = uniqueValueNum/values.length;
             if (uniqueRatio < 0.1) {
+                //System.out.println("few unique attribute:" + newData.attribute(i).name() + ", uniqueRatio=" + uniqueRatio + ": unique value num=" + uniqueValueNum + ", total num=" + values.length);
                 removalMetricIndices.add(i);
                 continue;
             }
 
             // step 3: remove metrics where the ratio of frequency of the most common values to the frequency of
             // the second most common values is large (> 19).
+            //System.out.println("attribute:" + newData.attribute(i).name() + ", values=" + Arrays.toString(values));
             if (isLargeFreqDiff(values)) {
+                //removalMetricIndices.add(i);
                 continue;
             }
         }
         System.out.println("Metrics to be removed by nearZeroVar: #" + removalMetricIndices.size());
 
         // remove attributes
-        newData = removeMetrics(newData, removalMetricIndices);
+        newData = removeMetrics (newData, removalMetricIndices);
 
         return newData;
     }
@@ -262,7 +231,7 @@ public class Preprocessor {
         return data;
     }
 
-    private boolean isLargeFreqDiff(double[] values) {
+    private boolean isLargeFreqDiff (double[] values) {
 
         HashMap<Double, Integer> map = new HashMap<>();
         for (int i = 0; i < values.length; i++) {
@@ -270,7 +239,7 @@ public class Preprocessor {
             if (count == null) {
                 map.put(values[i], 1);
             } else {
-                map.put(values[i], count + 1);
+                map.put(values[i], count+1);
             }
         }
 
@@ -279,40 +248,40 @@ public class Preprocessor {
 
         double mostFreq = freqs.get(0);
         double secondMostFreq = freqs.get(1);
-        if (mostFreq / secondMostFreq > 19)
+        if (mostFreq/secondMostFreq > 19)
             return true;
         else
             return false;
     }
 
-    private double calUniqueValueNum(double[] values) {
+    private double calUniqueValueNum (double[] values) {
 
         HashSet<Double> set = new HashSet();
-        for (double v : values) {
+        for (double v: values) {
             set.add(v);
         }
         return set.size();
     }
 
-    private Instances removeByCorrelation(Instances data) throws Exception {
+    private Instances removeByCorrelation (Instances data) throws Exception {
 
         PearsonsCorrelation pc = new PearsonsCorrelation();
 
         // create a copy of the instances
-        Instances newData = new Instances(data);
+        Instances newData = new Instances (data);
 
         // the variable that contains the correlation coefficients between metrics.
-        double cc[][] = new double[newData.numAttributes() - 1][newData.numAttributes() - 1];
+        double cc[][] = new double[newData.numAttributes()-1][newData.numAttributes()-1];
 
-        for (int i = 1; i < newData.numAttributes() - 1; i++) {
-            cc[i - 1][i - 1] = 0; // correlation for itself
+        for (int i = 1; i < newData.numAttributes()-1; i++) {
+            cc[i-1][i-1] = 0; // correlation for itself
             double v1[] = newData.attributeToDoubleArray(i);
 
-            for (int j = i + 1; j < newData.numAttributes(); j++) {
+            for (int j = i+1; j < newData.numAttributes(); j++) {
                 double v2[] = newData.attributeToDoubleArray(j);
                 double correlation = pc.correlation(v1, v2);
                 if (Double.isNaN(correlation)) correlation = 0;
-                cc[i - 1][j - 1] = cc[j - 1][i - 1] = correlation;
+                cc[i-1][j-1] = cc[j-1][i-1] = correlation;
             }
         }
 
@@ -327,14 +296,14 @@ public class Preprocessor {
         HashSet<Integer> removalMetricIndices = new HashSet<>();
         for (int i = 0; i < cc.length; i++) {
 
-            if (removalMetricIndices.contains(i + 1)) continue;
+            if (removalMetricIndices.contains(i+1)) continue;
 
             HashSet<Integer> candidates = new HashSet<>();
-            candidates.add(i + 1);
-            for (int j = i + 1; j < cc.length; j++) {
-                if (removalMetricIndices.contains(j + 1)) continue;
+            candidates.add(i+1);
+            for (int j = i+1; j < cc.length; j++) {
+                if (removalMetricIndices.contains(j+1)) continue;
                 if (cc[i][j] > 0.9) {
-                    candidates.add(j + 1);
+                    candidates.add(j+1);
                 }
             }
             removalMetricIndices.addAll(findHighlyCorrelatedMetrics(candidates, meanCC));
@@ -350,7 +319,8 @@ public class Preprocessor {
     private HashSet<Integer> findHighlyCorrelatedMetrics(HashSet<Integer> candidates, double meanCC[]) {
 
         // if the size of candidates is 1, then we do not remove it.
-        if (candidates.size() == 1) return new HashSet<>(0);
+        if (candidates.size() == 1)
+            return new HashSet<>(0);
 
         HashSet<Integer> result = new HashSet<>(candidates);
 
@@ -359,8 +329,8 @@ public class Preprocessor {
         Iterator<Integer> iterator = result.iterator();
         while (iterator.hasNext()) {
             Integer metricIndex = iterator.next();
-            if (minMeanCC > meanCC[metricIndex - 1]) {
-                minMeanCC = meanCC[metricIndex - 1];
+            if (minMeanCC > meanCC[metricIndex-1]) {
+                minMeanCC = meanCC[metricIndex-1];
                 minMeanCCMetricIndex = metricIndex;
             }
         }
@@ -376,38 +346,58 @@ public class Preprocessor {
         return result;
     }
 
+    private void printDoubleArray(double[][] array) {
+
+        StringBuilder sb = new StringBuilder();
+        sb.append("Print the arrayh\n");
+        for (int i = 0; i < array.length; i++) {
+            for (int j = 0; j < array[i].length; j++) {
+                //sb.append(String.format("%.0f", Integer.toString(_graph[i][j].freq)) + ",");
+                sb.append(String.format("%2s", array[i][j]) + ",");
+            }
+            sb.append("\n");
+        }
+        System.out.println(sb.toString());
+    }
+
     private String getClassRange(List<Integer> indices) throws Exception {
 
         List<Integer> list = new ArrayList<>(indices);
         String range = "";
-        for (int i = 0; i < list.size() - 1; i++) {
-            range += (list.get(i) + 1) + ",";
+        for (int i = 0; i < list.size()-1; i++) {
+            range += (list.get(i)+1) + ",";
         }
-        range += (list.get(indices.size() - 1) + 1);
+        range += (list.get(indices.size()-1) + 1);
+        //System.out.println(range);
         return range;
     }
 
-    private Instances createWekaAttributes(String headers[]) throws Exception {
+    public Instances createWekaAttributes(String headers[]) throws Exception {
 
         ArrayList<Attribute> atts = new ArrayList<>();
 
         // set numeric values for features
         for (int i = 0; i < headers.length; i++) {
             if (i == 0)
-                atts.add(new Attribute("ontology", (ArrayList<String>) null));
+                atts.add(new Attribute("ontology",(ArrayList<String>)null));
             else
                 atts.add(new Attribute(headers[i]));
         }
 
         // define relation name
-        String rel = "metric_length " + (headers.length - 1);
+        String rel = "metric_length " + (headers.length-1);
 
         // create instances
         Instances instances = new Instances(rel, atts, 0);
         return instances;
     }
 
-    private Pair<Instances, StringBuilder> norm(Instances data) throws Exception {
+    /**
+     * Normalise the metric values in log-scale
+     * @param data The set of instances where each instance is represented by its metric values
+     * @return The instances normalised
+     */
+    private Instances norm(Instances data) throws Exception {
 
         // step 1: find metrics whose max value is above 10. Such metrics are the candidates for log-transformation
         List<Integer> candidates = new ArrayList<>();
@@ -430,34 +420,19 @@ public class Preprocessor {
             params[3] = "java.lang.Math";
             params[4] = "-M";
             params[5] = "log1p";
+            //System.out.println(Arrays.toString(params));
             filter.setOptions(params);
             filter.setInputFormat(data);
             newData = Filter.useFilter(data, filter);
         }
 
         // step 3: scaling and centering
-        _mins = new double[data.numAttributes() - 1];
-        _maxs = new double[data.numAttributes() - 1];
+        _mins = new double[data.numAttributes()-1];
+        _maxs = new double[data.numAttributes()-1];
         for (int i = 1; i < newData.numAttributes(); i++) {
             double values[] = newData.attributeToDoubleArray(i);
-            _mins[i - 1] = StatUtils.min(values);
-            _maxs[i - 1] = StatUtils.max(values);
-        }
-
-        StringBuilder dataPropertyBuilder = new StringBuilder();
-        dataPropertyBuilder.append("#log:");
-        for (int i = 0; i < candidates.size() - 1; i++) {
-            dataPropertyBuilder.append(candidates.get(i) + ",");
-        }
-        dataPropertyBuilder.append(candidates.get(candidates.size() - 1) + "\n\n");
-
-        dataPropertyBuilder.append("#norm:\n");
-        for (int k = 1; k < newData.numAttributes(); k++) {
-            if (_maxs[k - 1] - _mins[k - 1] != 0) {
-                dataPropertyBuilder.append("min=" + _mins[k - 1] + ",max=" + _maxs[k - 1] + "\n");
-            } else {
-                dataPropertyBuilder.append("min=-1,max=-1\n");
-            }
+            _mins[i-1] = StatUtils.min(values);
+            _maxs[i-1] = StatUtils.max(values);
         }
 
         for (int i = 0; i < newData.numInstances(); i++) {
@@ -465,17 +440,13 @@ public class Preprocessor {
             for (int k = 1; k < instance.numAttributes(); k++) {
                 double v = instance.value(k);
                 double norm = 0;
-
-                if (_maxs[k - 1] - _mins[k - 1] != 0) {
-                    norm = (v - _mins[k - 1]) / (_maxs[k - 1] - _mins[k - 1]);
-                }
+                if (_maxs[k-1]-_mins[k-1] != 0)
+                    norm = (v-_mins[k-1])/(_maxs[k-1]-_mins[k-1]);
                 instance.setValue(k, norm);
             }
         }
-
-        return new Pair<Instances, StringBuilder>(newData, dataPropertyBuilder);
+        return newData;
     }
-
 
     public double[] getMinAttributeValues() {
         return _mins;
@@ -489,7 +460,7 @@ public class Preprocessor {
         return _dupOntFile;
     }
 
-    private double[] stringToDouble(Instances instances, String data[]) {
+    private double[] stringToDouble (Instances instances, String data[]) {
         double vals[] = new double[data.length];
         vals[0] = instances.attribute(0).addStringValue(data[0]);
         for (int i = 1; i < data.length; i++) {
@@ -498,7 +469,7 @@ public class Preprocessor {
         return vals;
     }
 
-    public <T> String generateKeyForRecord(T data[]) throws Exception {
+    public <T> String generateKeyForRecord (T data[]) throws Exception {
 
         StringBuilder key = new StringBuilder();
 
@@ -507,16 +478,30 @@ public class Preprocessor {
         for (int i = 1; i < data.length; i++) {
             key.append(data[i]);
         }
-        return key.toString();
+        //return result.toString().hashCode();
+        return Hashing.md5().hashString(key.toString().trim().toLowerCase(), Charsets.UTF_8).toString();
     }
 
-    public String generateKeyForInstance(Instance instance) throws Exception {
+    public String generateKeyForInstance (Instance instance) throws Exception {
 
         StringBuilder key = new StringBuilder();
 
         for (int i = 1; i < instance.numAttributes(); i++) {
             key.append(instance.value(i));
         }
+        //return key.toString().hashCode();
         return key.toString();
+    }
+
+    public int generateKeyForInstance (Instance instance, Set<Integer> attrIndices) throws Exception {
+
+        StringBuilder key = new StringBuilder();
+
+        for (int i = 0; i < instance.numAttributes(); i++) {
+            if (attrIndices.contains(i)) {
+                key.append(instance.value(i));
+            }
+        }
+        return key.toString().hashCode();
     }
 }

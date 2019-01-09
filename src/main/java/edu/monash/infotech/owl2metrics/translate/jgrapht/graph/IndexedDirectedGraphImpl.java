@@ -17,6 +17,8 @@ public class IndexedDirectedGraphImpl extends DirectedMultigraph<NamedNode, Name
 
     public IndexedDirectedGraphImpl(Class<NamedParamEdge> edgeClass, int size) {
         super(edgeClass);
+        //super(new ClassBasedEdgeFactory<NamedNode, NamedParamEdge>(edgeClass));
+
         vertexMap = new HashMap<String, NamedNode>(size);
         edgeSet = new HashSet<Integer>(size * 3);
     }

@@ -39,6 +39,9 @@ public class MetricsFormatter {
         } else {
             array = commonPart;
         }
+
+        // include calculation time
+        array = concat(array, new String[]{"CAL_TIME"});
         return array;
 
     }
@@ -81,6 +84,9 @@ public class MetricsFormatter {
             String[] profiles = ProfileReporter.OWL2Profiles.getProfiles(metrics.getProfiles());
             array = concat(array, profiles);
         }
+
+        // include calculation time
+        array = concat(array, new String[]{Long.toString(metrics.getCalculationTime())});
 
         return array;
     }

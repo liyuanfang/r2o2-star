@@ -4,7 +4,47 @@ import com.google.common.base.Function;
 import com.google.common.collect.Sets;
 import edu.monash.infotech.owl2metrics.translate.OWL2Graph;
 import edu.monash.infotech.owl2metrics.translate.all.NodeRelAddingVisitor;
-import org.semanticweb.owlapi.model.*;
+import org.semanticweb.owlapi.model.OWLAsymmetricObjectPropertyAxiom;
+import org.semanticweb.owlapi.model.OWLClassAssertionAxiom;
+import org.semanticweb.owlapi.model.OWLClassExpression;
+import org.semanticweb.owlapi.model.OWLDataPropertyAssertionAxiom;
+import org.semanticweb.owlapi.model.OWLDataPropertyDomainAxiom;
+import org.semanticweb.owlapi.model.OWLDataPropertyExpression;
+import org.semanticweb.owlapi.model.OWLDataPropertyRangeAxiom;
+import org.semanticweb.owlapi.model.OWLDataRange;
+import org.semanticweb.owlapi.model.OWLDifferentIndividualsAxiom;
+import org.semanticweb.owlapi.model.OWLDisjointClassesAxiom;
+import org.semanticweb.owlapi.model.OWLDisjointDataPropertiesAxiom;
+import org.semanticweb.owlapi.model.OWLDisjointObjectPropertiesAxiom;
+import org.semanticweb.owlapi.model.OWLDisjointUnionAxiom;
+import org.semanticweb.owlapi.model.OWLEntity;
+import org.semanticweb.owlapi.model.OWLEquivalentClassesAxiom;
+import org.semanticweb.owlapi.model.OWLEquivalentDataPropertiesAxiom;
+import org.semanticweb.owlapi.model.OWLEquivalentObjectPropertiesAxiom;
+import org.semanticweb.owlapi.model.OWLFunctionalDataPropertyAxiom;
+import org.semanticweb.owlapi.model.OWLFunctionalObjectPropertyAxiom;
+import org.semanticweb.owlapi.model.OWLHasKeyAxiom;
+import org.semanticweb.owlapi.model.OWLInverseFunctionalObjectPropertyAxiom;
+import org.semanticweb.owlapi.model.OWLInverseObjectPropertiesAxiom;
+import org.semanticweb.owlapi.model.OWLIrreflexiveObjectPropertyAxiom;
+import org.semanticweb.owlapi.model.OWLLogicalAxiomVisitor;
+import org.semanticweb.owlapi.model.OWLNamedIndividual;
+import org.semanticweb.owlapi.model.OWLNegativeDataPropertyAssertionAxiom;
+import org.semanticweb.owlapi.model.OWLNegativeObjectPropertyAssertionAxiom;
+import org.semanticweb.owlapi.model.OWLObject;
+import org.semanticweb.owlapi.model.OWLObjectProperty;
+import org.semanticweb.owlapi.model.OWLObjectPropertyAssertionAxiom;
+import org.semanticweb.owlapi.model.OWLObjectPropertyDomainAxiom;
+import org.semanticweb.owlapi.model.OWLObjectPropertyExpression;
+import org.semanticweb.owlapi.model.OWLObjectPropertyRangeAxiom;
+import org.semanticweb.owlapi.model.OWLReflexiveObjectPropertyAxiom;
+import org.semanticweb.owlapi.model.OWLSameIndividualAxiom;
+import org.semanticweb.owlapi.model.OWLSubClassOfAxiom;
+import org.semanticweb.owlapi.model.OWLSubDataPropertyOfAxiom;
+import org.semanticweb.owlapi.model.OWLSubObjectPropertyOfAxiom;
+import org.semanticweb.owlapi.model.OWLSubPropertyChainOfAxiom;
+import org.semanticweb.owlapi.model.OWLSymmetricObjectPropertyAxiom;
+import org.semanticweb.owlapi.model.OWLTransitiveObjectPropertyAxiom;
 import org.semanticweb.owlapi.vocab.OWLRDFVocabulary;
 
 import javax.annotation.Nullable;
@@ -13,7 +53,14 @@ import java.util.Collections;
 import java.util.Set;
 
 import static com.google.common.collect.Collections2.transform;
-import static org.semanticweb.owlapi.vocab.OWLRDFVocabulary.*;
+import static edu.monash.infotech.owl2metrics.translate.OWL2Graph.DEPENDS_ON;
+import static org.semanticweb.owlapi.vocab.OWLRDFVocabulary.OWL_CLASS;
+import static org.semanticweb.owlapi.vocab.OWLRDFVocabulary.OWL_DISJOINT_WITH;
+import static org.semanticweb.owlapi.vocab.OWLRDFVocabulary.OWL_EQUIVALENT_PROPERTY;
+import static org.semanticweb.owlapi.vocab.OWLRDFVocabulary.OWL_INVERSE_OF;
+import static org.semanticweb.owlapi.vocab.OWLRDFVocabulary.OWL_OBJECT_PROPERTY;
+import static org.semanticweb.owlapi.vocab.OWLRDFVocabulary.RDFS_DOMAIN;
+import static org.semanticweb.owlapi.vocab.OWLRDFVocabulary.RDFS_RANGE;
 
 /**
  * @author Yuan-Fang Li
@@ -28,7 +75,7 @@ public class NamedNodeRelAddingVisitor<Node, Relationship> extends NodeRelAdding
     public NamedNodeRelAddingVisitor(final OWL2Graph<?, Node, Relationship> owl2Graph) {
         super(owl2Graph);
         this.entityToNodeFunction = new Function<OWLEntity, Node>() {
-
+            @Override
             public Node apply(@Nullable OWLEntity input) {
                 return owl2Graph.findOrCreateNode(input.toString(), input.getEntityType().getVocabulary().toString(), false);
             }
@@ -50,7 +97,7 @@ public class NamedNodeRelAddingVisitor<Node, Relationship> extends NodeRelAdding
     private void addDependsOnRelations(Collection<Node> subNodes, Set<Node> allNodes) {
         for (Node n : subNodes) {
             for (Node d : allNodes) {
-                owl2Graph.createRelationship(n, d, OWL2Graph.DEPENDS_ON);
+                owl2Graph.createRelationship(n, d, DEPENDS_ON);
             }
         }
     }
@@ -113,7 +160,7 @@ public class NamedNodeRelAddingVisitor<Node, Relationship> extends NodeRelAdding
     }
 
     private void addPairwiseRelation(Node[] array) {
-        addPairwiseRelation(array, OWL2Graph.DEPENDS_ON);
+        addPairwiseRelation(array, DEPENDS_ON);
     }
 
     private void addPairwiseRelation(Node[] array, String rel) {

@@ -40,6 +40,7 @@ public class NamedEntityMetric<T extends Comparable<T>> implements Comparable<Na
         return new String[]{name, value.toString()};
     }
 
+    @Override
     public int compareTo(NamedEntityMetric<T> o) {
         if (!name.equals(o.name)) {
             throw new IllegalArgumentException("Wrong metric to compare: " + name + " against " + o.name);

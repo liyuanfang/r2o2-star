@@ -2,8 +2,8 @@ package edu.monash.infotech.owl2metrics.translate.jgrapht.graph;
 
 import com.google.common.collect.ComparisonChain;
 import com.google.common.collect.Sets;
-import org.apache.commons.lang3.builder.EqualsBuilder;
-import org.apache.commons.lang3.builder.HashCodeBuilder;
+import org.apache.commons.lang.builder.EqualsBuilder;
+import org.apache.commons.lang.builder.HashCodeBuilder;
 
 import java.util.Properties;
 import java.util.SortedSet;

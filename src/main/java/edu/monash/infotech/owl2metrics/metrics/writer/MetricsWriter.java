@@ -1,6 +1,6 @@
 package edu.monash.infotech.owl2metrics.metrics.writer;
 
-import com.opencsv.CSVWriter;
+import au.com.bytecode.opencsv.CSVWriter;
 import edu.monash.infotech.owl2metrics.model.OntMetrics;
 
 import java.io.FileWriter;

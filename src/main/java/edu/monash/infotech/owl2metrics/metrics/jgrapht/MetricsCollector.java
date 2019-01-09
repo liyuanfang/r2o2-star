@@ -6,7 +6,6 @@ import edu.monash.infotech.owl2metrics.model.DLCMetrics;
 import edu.monash.infotech.owl2metrics.model.OntMetrics;
 import edu.monash.infotech.owl2metrics.model.PropertyMetrics;
 import edu.monash.infotech.owl2metrics.profiles.ProfileReporter;
-import edu.monash.infotech.owl2metrics.translate.OWL2Graph;
 import edu.monash.infotech.owl2metrics.translate.jgrapht.graph.NamedNode;
 import edu.monash.infotech.owl2metrics.translate.jgrapht.graph.NamedParamEdge;
 import org.apache.log4j.Logger;
@@ -16,16 +15,56 @@ import org.jgrapht.traverse.DepthFirstIterator;
 import org.semanticweb.owlapi.apibinding.OWLManager;
 import org.semanticweb.owlapi.metrics.GCICount;
 import org.semanticweb.owlapi.metrics.HiddenGCICount;
-import org.semanticweb.owlapi.model.*;
+import org.semanticweb.owlapi.model.AxiomType;
+import org.semanticweb.owlapi.model.ClassExpressionType;
+import org.semanticweb.owlapi.model.OWLAxiom;
+import org.semanticweb.owlapi.model.OWLClass;
+import org.semanticweb.owlapi.model.OWLClassAssertionAxiom;
+import org.semanticweb.owlapi.model.OWLClassAxiom;
+import org.semanticweb.owlapi.model.OWLClassExpression;
+import org.semanticweb.owlapi.model.OWLInverseObjectPropertiesAxiom;
+import org.semanticweb.owlapi.model.OWLObjectAllValuesFrom;
+import org.semanticweb.owlapi.model.OWLObjectMaxCardinality;
+import org.semanticweb.owlapi.model.OWLObjectMinCardinality;
+import org.semanticweb.owlapi.model.OWLObjectProperty;
+import org.semanticweb.owlapi.model.OWLObjectPropertyExpression;
+import org.semanticweb.owlapi.model.OWLObjectSomeValuesFrom;
+import org.semanticweb.owlapi.model.OWLOntology;
+import org.semanticweb.owlapi.model.OWLOntologyFactory;
+import org.semanticweb.owlapi.model.OWLOntologyManager;
+import org.semanticweb.owlapi.model.OWLPropertyAssertionAxiom;
+import org.semanticweb.owlapi.model.OWLSubClassOfAxiom;
+import org.semanticweb.owlapi.model.OWLSubObjectPropertyOfAxiom;
+import org.semanticweb.owlapi.model.OWLTransitiveObjectPropertyAxiom;
 import org.semanticweb.owlapi.vocab.OWLRDFVocabulary;
 
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
+import java.util.SortedSet;
 
+import static edu.monash.infotech.owl2metrics.translate.OWL2Graph.NODE_ANON_TYPE_NAME;
+import static edu.monash.infotech.owl2metrics.translate.OWL2Graph.OWL_CLASS_NAME;
+import static edu.monash.infotech.owl2metrics.translate.OWL2Graph.PROPERTY_KIND;
 import static java.lang.Boolean.valueOf;
 import static java.lang.Math.max;
-import static org.semanticweb.owlapi.vocab.OWLRDFVocabulary.*;
+import static org.semanticweb.owlapi.vocab.OWLRDFVocabulary.OWL_DATA_PROPERTY;
+import static org.semanticweb.owlapi.vocab.OWLRDFVocabulary.OWL_DISJOINT_WITH;
+import static org.semanticweb.owlapi.vocab.OWLRDFVocabulary.OWL_EQUIVALENT_PROPERTY;
+import static org.semanticweb.owlapi.vocab.OWLRDFVocabulary.OWL_INDIVIDUAL;
+import static org.semanticweb.owlapi.vocab.OWLRDFVocabulary.OWL_INVERSE_OF;
+import static org.semanticweb.owlapi.vocab.OWLRDFVocabulary.OWL_OBJECT_PROPERTY;
+import static org.semanticweb.owlapi.vocab.OWLRDFVocabulary.OWL_THING;
+import static org.semanticweb.owlapi.vocab.OWLRDFVocabulary.RDFS_DOMAIN;
+import static org.semanticweb.owlapi.vocab.OWLRDFVocabulary.RDFS_RANGE;
+import static org.semanticweb.owlapi.vocab.OWLRDFVocabulary.RDFS_SUBCLASS_OF;
+import static org.semanticweb.owlapi.vocab.OWLRDFVocabulary.RDFS_SUB_PROPERTY_OF;
 
 /**
  * @author Yuan-Fang Li
@@ -95,7 +134,7 @@ public class MetricsCollector {
 
         for (NamedNode node : allNodeHits) {
             // SOV
-            if (!valueOf(node.getProperties().get(OWL2Graph.NODE_ANON_TYPE_NAME).toString())) {
+            if (!valueOf(node.getProperties().get(NODE_ANON_TYPE_NAME).toString())) {
                 namedNodeCount++;
             }
 
@@ -207,9 +246,9 @@ public class MetricsCollector {
             Set<OWLClassExpression> Subcls = a.getSubClass().getNestedClassExpressions();
             Set<OWLClassExpression> Supcls = a.getSuperClass().getNestedClassExpressions();
             countAxiom++;
-            //System.out.println(countAxiom + ". " + a);
+            // System.out.println(countAxiom + ". " + a);
             //ESUB/ALLSUB - Existential quantification
-            //System.out.println("ESUB/ALLSUB");
+            // System.out.println("ESUB/ALLSUB");
             for (OWLClassExpression c : Subcls) {
                 if (c.getClassExpressionType().equals(ClassExpressionType.OBJECT_SOME_VALUES_FROM)) {
                     subflag_Eq = true;
@@ -230,7 +269,7 @@ public class MetricsCollector {
             }
 
             //DISSUB/ALLSUB - Disjunction
-            //System.out.println("DISSUB/ALLSUB");
+            // System.out.println("DISSUB/ALLSUB");
             for (OWLClassExpression c : Subcls) {
                 if (c.getClassExpressionType().equals(ClassExpressionType.OBJECT_UNION_OF)) {
                     subflag_D = true;
@@ -251,7 +290,7 @@ public class MetricsCollector {
             }
 
             //CSUB/ALLSUB - Conjunction with anonymous in subclass
-            //System.out.println("CSUB/ALLSUB");
+            // System.out.println("CSUB/ALLSUB");
             OWLClassExpression CSUB_Subcls = a.getSubClass();
             if (CSUB_Subcls.getClassExpressionType().equals(ClassExpressionType.OBJECT_INTERSECTION_OF)) {
                 Set<OWLClassExpression> set_component = CSUB_Subcls.asConjunctSet();
@@ -268,7 +307,7 @@ public class MetricsCollector {
             }
 
             //(SuperClass)Number of Chain of Existential, Depth of Chain of Existential
-            //System.out.println("(SuperClass)Number of Chain of Existential");
+            // System.out.println("(SuperClass)Number of Chain of Existential");
             OWLClassExpression E_chn_supCls = a.getSuperClass();
             //if(supCls.getClassExpressionType().equals(ClassExpressionType.OBJECT_SOME_VALUES_FROM)){
             D_E_chn_crt = calculateDepth(E_chn_supCls, ClassExpressionType.OBJECT_SOME_VALUES_FROM);
@@ -283,7 +322,7 @@ public class MetricsCollector {
             //}
 
             //(SupClass)Number of Chain of Disjunction, Depth of Chain of Disjunction
-            //System.out.println("(SupClass)Number of Chain of Disjunction");
+            // System.out.println("(SupClass)Number of Chain of Disjunction");
             OWLClassExpression D_chn_supCls = a.getSuperClass();
             //if(supCls.getClassExpressionType().equals(ClassExpressionType.OBJECT_UNION_OF)){
             D_D_chn_crt = calculateDepth(D_chn_supCls, ClassExpressionType.OBJECT_UNION_OF);
@@ -298,7 +337,7 @@ public class MetricsCollector {
             //}
 
             //(SubClass)Number of Chain of Existential, Depth of Chain of Existential
-            //System.out.println("(SubClass)Number of Chain of Existential");
+            // System.out.println("(SubClass)Number of Chain of Existential");
             OWLClassExpression sE_chn_subCls = a.getSubClass();
             //if(subCls.getClassExpressionType().equals(ClassExpressionType.OBJECT_SOME_VALUES_FROM)){
             D_sE_chn_crt = calculateDepth(sE_chn_subCls, ClassExpressionType.OBJECT_SOME_VALUES_FROM);
@@ -314,7 +353,7 @@ public class MetricsCollector {
             //}
 
             //(SubClass)Number of Chain of Conjunction, Depth of Chain of Conjunction
-            //System.out.println("(SubClass)Number of Chain of Conjunction");
+            // System.out.println("(SubClass)Number of Chain of Conjunction");
             OWLClassExpression C_chn_subCls = a.getSubClass();
             //if(subCls.getClassExpressionType().equals(ClassExpressionType.OBJECT_INTERSECTION_OF)){
             D_C_chn_crt = calculateDepth(C_chn_subCls, ClassExpressionType.OBJECT_INTERSECTION_OF);
@@ -329,7 +368,7 @@ public class MetricsCollector {
             //}
 
             //Transitive role, Inverse role, Role hierarchy and Disjunction
-            //System.out.println("Calculating HLC");
+            // System.out.println("Calculating HLC");
             int totalInvoked = 0;
             OWLClassExpression HLC_subCls = a.getSubClass();
             String HLC_aCls = "";
@@ -343,26 +382,26 @@ public class MetricsCollector {
                 if (HLC_supCls.isAnonymous()) {
                     int disjunctionInvoking = calculateDisjunctionInvoking(HLC_supCls);
                     if (disjunctionInvoking > 0) {
-                        //System.out.println("Check Disjunction Invoking");
+                        // System.out.println("Check Disjunction Invoking");
                         totalInvoked += disjunctionInvoking;
                         HLC += disjunctionInvoking;
                     }
                     Set<OWLObjectProperty> objectPropertiesInSignature = HLC_supCls.getObjectPropertiesInSignature();
                     int transitiveDiffRole = calculateDifficultRole(objectPropertiesInSignature, "transitive", ontology);
                     if (transitiveDiffRole > 0) {
-                        //System.out.println("Check transitive role");
+                        // System.out.println("Check transitive role");
                         totalInvoked += transitiveDiffRole;
                         HLC += transitiveDiffRole;
                     }
                     int inverseDiffRole = calculateDifficultRole(objectPropertiesInSignature, "inverse", ontology);
                     if (inverseDiffRole > 0) {
-                        //System.out.println("Check inverse role");
+                        // System.out.println("Check inverse role");
                         totalInvoked += inverseDiffRole;
                         HLC += inverseDiffRole;
                     }
                     int hierarchyDiffRole = calculateDifficultRole(objectPropertiesInSignature, "hierarchy", ontology);
                     if (hierarchyDiffRole > 0) {
-                        //System.out.println("Check hierarchy role");
+                        // System.out.println("Check hierarchy role");
                         totalInvoked += hierarchyDiffRole;
                         HLC += hierarchyDiffRole;
                     }
@@ -370,7 +409,7 @@ public class MetricsCollector {
 
                 InvokedMap.get(HLC_aCls).add(totalInvoked);
                 metrics.getHlc_c().put(HLC_aCls, totalInvoked);
-                //System.out.println("End calculating HLC");
+                // System.out.println("End calculating HLC");
             }
 
         }
@@ -379,7 +418,7 @@ public class MetricsCollector {
         supflag_Eq = false;
         subflag_D = false;
         supflag_D = false;
-        //System.out.println("Getting Chain results");
+        // System.out.println("Getting Chain results");
         if (subclass_crt != 0) {
             //ESUB/ALLSUB - Result
             metrics.setEsub((double) ESUB_crt / subclass_crt);
@@ -426,7 +465,7 @@ public class MetricsCollector {
         }
 
         //% of EL Class Expression in Ontology
-        //System.out.println("Start calculate % of EL Class Expression");
+        // System.out.println("Start calculate % of EL Class Expression");
         double tNum = set.size();
         double countEL = 0;
         for (OWLClassExpression exp : set) {
@@ -440,11 +479,11 @@ public class MetricsCollector {
         } else {
             metrics.setELclass_prt(0);
         }
-        //System.out.println("End calculate % of EL Class Expression");
+        // System.out.println("End calculate % of EL Class Expression");
 
 
         //% of EL axiom in Ontology
-        //System.out.println("Start calculate % of EL axiom");
+        // System.out.println("Start calculate % of EL axiom");
         double ELaxiom = 0;
         boolean flag = false;
         Set<OWLAxiom> axiomSet = removePropertyAxiom(ontology.getTBoxAxioms(true));
@@ -474,10 +513,10 @@ public class MetricsCollector {
         } else {
             metrics.setELaxiom_prt(0);
         }
-        //System.out.println("End calculate % of EL axiom");
+        // System.out.println("End calculate % of EL axiom");
 
         //% of EL properties in Ontology
-        //System.out.println("Start calculate % of EL properties");
+        // System.out.println("Start calculate % of EL properties");
         double Elprop_count = propertyMetrics.getFunc_prt_cnt() + propertyMetrics.getSub_prt_cnt() + propertyMetrics.getTrans_prt_cnt() + propertyMetrics.getChain_prt_cnt() + propertyMetrics.getRefle_prt_cnt() + propertyMetrics.getDomain_cnt() + propertyMetrics.getRange_cnt();
         double Elprop_percent = (Elprop_count / propertyMetrics.calculateTotal_prt_cnt());
         if (!Double.isNaN(Elprop_percent)) {
@@ -485,11 +524,11 @@ public class MetricsCollector {
         } else {
             propertyMetrics.setEl_prop_prt(0);
         }
-        //System.out.println("End calculate % of EL properties");
+        // System.out.println("End calculate % of EL properties");
 
 
         //Number of Hierarchy role invoked
-        //System.out.println("Start calculate Number of Hierarchy role");
+        // System.out.println("Start calculate Number of Hierarchy role");
         int IHR = 0;
         Set<OWLSubObjectPropertyOfAxiom> hierarchy_propertySet = ontology.getAxioms(AxiomType.SUB_OBJECT_PROPERTY,true);
         Set<OWLObjectProperty> subpropertySet = new HashSet<OWLObjectProperty>();
@@ -508,10 +547,10 @@ public class MetricsCollector {
             metrics.getIhr_r().put(property.toString(),total_invoking_role);
         }
         metrics.setIhr(IHR);
-        //System.out.println("End calculate Number of Hierarchy role");
+        // System.out.println("End calculate Number of Hierarchy role");
 
         //Number of Inverse role invoked
-        //System.out.println("Start calculate Number of Inverse role");
+        // System.out.println("Start calculate Number of Inverse role");
         int IIR = 0;
         Set<OWLInverseObjectPropertiesAxiom> inverse_property_axiom_Set = ontology.getAxioms(AxiomType.INVERSE_OBJECT_PROPERTIES,true);
         Set<OWLObjectProperty> inversepropertySet = new HashSet<OWLObjectProperty>();
@@ -534,10 +573,10 @@ public class MetricsCollector {
             metrics.getIir_r().put(property.toString(),total_invoking_role);
         }
         metrics.setIir(IIR);
-        //System.out.println("End calculate Number of Inverse role");
+        // System.out.println("End calculate Number of Inverse role");
 
         //Number of Transitive Role Invoked
-        //System.out.println("Start calculate Number of Transitive role");
+        // System.out.println("Start calculate Number of Transitive role");
         int ITR = 0;
         Set<OWLTransitiveObjectPropertyAxiom> transitiveObjectPropertyAxiomSet = ontology.getAxioms(AxiomType.TRANSITIVE_OBJECT_PROPERTY,true);
         Set<OWLObjectProperty> transitivepropertySet = new HashSet<OWLObjectProperty>();
@@ -556,7 +595,7 @@ public class MetricsCollector {
             metrics.getItr_r().put(property.toString(),total_invoking_role);
         }
         metrics.setItr(ITR);
-        //System.out.println("End calculate Number of Transitive role");
+        // System.out.println("End calculate Number of Transitive role");
 
 
         // Individuals
@@ -840,7 +879,7 @@ public class MetricsCollector {
         }
 
         Depin += max;
-        ////System.out.println("Finish calculateDepth: " + cls);
+//        System.out.println("Finish calculateDepth: " + cls);
         return Depin;
     }
 
@@ -876,7 +915,7 @@ public class MetricsCollector {
 
         //Object type = node.getProperties().get(NODE_TYPE_NAME);
         SortedSet<String> types = node.getTypes();
-        if (types.contains(OWL2Graph.OWL_CLASS_NAME)) {
+        if (types.contains(OWL_CLASS_NAME)) {
             noClasses++;
             handleClassNode(metrics, node);
         } else if (types.contains(OWL_DATA_PROPERTY.toString())) {
@@ -897,7 +936,7 @@ public class MetricsCollector {
         } else {
             propertyMetrics.setObj_prt_cnt(propertyMetrics.getObj_prt_cnt() + 1);
         }
-        Set<String> kind = (Set<String>) node.getProperties().get(OWL2Graph.PROPERTY_KIND);
+        Set<String> kind = (Set<String>) node.getProperties().get(PROPERTY_KIND);
         if (kind == null) {
             kind = Collections.emptySet();
         }

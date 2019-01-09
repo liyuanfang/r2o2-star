@@ -16,12 +16,19 @@ import org.semanticweb.owlapi.io.OWLOntologyDocumentSource;
 import org.semanticweb.owlapi.io.ReaderDocumentSource;
 import org.semanticweb.owlapi.model.OWLOntologyCreationException;
 
-import java.io.*;
+import java.io.BufferedReader;
+import java.io.File;
+import java.io.FileInputStream;
+import java.io.FileReader;
+import java.io.IOException;
+import java.io.InputStreamReader;
+import java.lang.management.ManagementFactory;
+import java.lang.management.ThreadMXBean;
 import java.lang.reflect.InvocationTargetException;
 import java.net.URL;
 import java.util.Set;
 
-import static com.opencsv.CSVWriter.DEFAULT_SEPARATOR;
+import static au.com.bytecode.opencsv.CSVWriter.DEFAULT_SEPARATOR;
 
 /**
  * @author Yuan-Fang Li
@@ -71,21 +78,26 @@ public class DirectoryProcessor {
     }
 
     public void processDirectory(String dirName) throws IOException {
-        URL resource = this.getClass().getClassLoader().getResource(dirName);
-        File dir = new File(resource.getPath());
+//        URL resource = this.getClass().getClassLoader().getResource(dirName);
+//        File dir = new File(resource.getPath());
+        File dir = new File(dirName);
 
         processDirectory(new File[]{dir});
     }
 
     public void processDirectory(File[] dirs) throws IOException {
         for (File f : dirs) {
-            if (isValidOntology(f) && f.isFile() && processNames.contains(f.getName())) {
+            if (isValidOntology(f) && f.isFile() && needToProcessFile(f)) {
                 processOntology(f);
             } else if (f.isDirectory()) {
                 LOGGER.info("Processing dir: " + f.getAbsolutePath());
                 processDirectory(f.listFiles());
             }
         }
+    }
+
+    private boolean needToProcessFile(File f) {
+        return processNames.isEmpty() || processNames.contains(f.getName());
     }
 
     public static boolean isValidOntology(File f) {
@@ -123,13 +135,20 @@ public class DirectoryProcessor {
 
     private void processOneOntology(OWLOntologyDocumentSource source, String ontologyName, double fileSize)
             throws OWLOntologyCreationException, IOException, NoSuchMethodException, IllegalAccessException, InvocationTargetException {
+
+        long start = getUserTime();
         DirectedGraph<NamedNode, NamedParamEdge> graph = owl2Graph.loadOWLOntology(source, true);
         MetricsCollector collector = new MetricsCollector(graph, owl2Graph.getOntology(), measureExpressivity);
         OntMetrics metrics = collector.collectMetrics(ontologyName);
 
         metrics.setSze(fileSize);
 
+        long end = getUserTime();
+
+        metrics.setCalculationTime((end - start) / 1000000);
+
         writer.writeMetrics(csvFileName, delimiter, ontologyName, metrics, false, true);
+
         LOGGER.info("Done.");
     }
 
@@ -148,10 +167,15 @@ public class DirectoryProcessor {
             processFile = new File(args[3]);
         }
         File dir = new File(dirName);
-        LOGGER.info("Parameters: ontsDir = " + dirName + ", csvName = " + csvName + ", delimiter = " + delimiter + ", to process onts in file: " + args[3]);
-        DirectoryProcessor processor = new DirectoryProcessor(csvName, delimiter, false, processFile);
+        LOGGER.info("Parameters: ontsDir = " + dirName + ", csvName = " + csvName + ", delimiter = " + delimiter + ", to process onts in file: " + processFile);
+        DirectoryProcessor processor = new DirectoryProcessor(csvName, delimiter, true, processFile);
         processor.writeHeader();
         processor.processDirectory(new File[]{dir});
         LOGGER.info("All ontologies processed!");
+    }
+
+    public static long getUserTime() {
+        ThreadMXBean tb = ManagementFactory.getThreadMXBean();
+        return tb.getCurrentThreadUserTime();
     }
 }

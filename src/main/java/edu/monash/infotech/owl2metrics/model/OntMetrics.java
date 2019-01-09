@@ -6,12 +6,28 @@ import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.Map;
 
+import static edu.monash.infotech.owl2metrics.model.OntMetrics.MetricName.CID;
+import static edu.monash.infotech.owl2metrics.model.OntMetrics.MetricName.COD;
+import static edu.monash.infotech.owl2metrics.model.OntMetrics.MetricName.DIT;
+import static edu.monash.infotech.owl2metrics.model.OntMetrics.MetricName.NOC;
+import static edu.monash.infotech.owl2metrics.model.OntMetrics.MetricName.NOP;
+
 /**
  * @author Yuan-Fang Li
- * @version $Id: OntMetrics.java 151 2013-12-03 05:45:21Z yli $
+ * @version $Id: OntMetrics.java 163 2015-11-18 02:33:22Z yli $
  */
 public class OntMetrics {
     private String ontName;
+
+    private long calculationTime;
+
+    public long getCalculationTime() {
+        return calculationTime;
+    }
+
+    public void setCalculationTime(long calculationTime) {
+        this.calculationTime = calculationTime;
+    }
 
     public DLCMetrics getDlcMetrics() {
         return dlcMetrics;
@@ -538,14 +554,16 @@ public class OntMetrics {
 
         value += "\nClass-level metrics\n";
         value += "\tMetric\tMax\tTotal\n";
-        value += "\t" + MetricName.NOC.toString() + "\t" + clsStats.get(MetricName.NOC).getMax() + "\t" + clsStats.get(MetricName.NOC).getTotal() + "\n";
-        value += "\t" + MetricName.CID.toString() + "\t" + clsStats.get(MetricName.CID).getMax() + "\t" + clsStats.get(MetricName.CID).getTotal() + "\n";
-        value += "\t" + MetricName.COD.toString() + "\t" + clsStats.get(MetricName.COD).getMax() + "\t" + clsStats.get(MetricName.COD).getTotal() + "\n";
-        value += "\t" + MetricName.DIT.toString() + "\t" + clsStats.get(MetricName.DIT).getMax() + "\t" + clsStats.get(MetricName.DIT).getTotal() + "\n";
-        value += "\t" + MetricName.NOP.toString() + "\t" + clsStats.get(MetricName.NOP).getMax() + "\t" + clsStats.get(MetricName.NOP).getTotal() + "\n";
+        value += "\t" + NOC.toString() + "\t" + clsStats.get(NOC).getMax() + "\t" + clsStats.get(NOC).getTotal() + "\n";
+        value += "\t" + CID.toString() + "\t" + clsStats.get(CID).getMax() + "\t" + clsStats.get(CID).getTotal() + "\n";
+        value += "\t" + COD.toString() + "\t" + clsStats.get(COD).getMax() + "\t" + clsStats.get(COD).getTotal() + "\n";
+        value += "\t" + DIT.toString() + "\t" + clsStats.get(DIT).getMax() + "\t" + clsStats.get(DIT).getTotal() + "\n";
+        value += "\t" + NOP.toString() + "\t" + clsStats.get(NOP).getMax() + "\t" + clsStats.get(NOP).getTotal() + "\n";
 
         value += "\n" + dlcMetrics.toString() + "\n";
         value += "\n" + propertyMetrics.toString() + "\n";
+
+        value += "\t" + "CAL-TIME" + "\t" + Long.toString(calculationTime) + " (ms) \n";
         value += "\n";
 
         return value;
@@ -589,19 +607,21 @@ public class OntMetrics {
         //values.put("DL", profiles.get(ProfileReporter.OWL2Profiles.DL));
         //values.put("FULL", profiles.get(ProfileReporter.OWL2Profiles.FULL));
         //values.put("EXP", expressivity);
-        values.put("NOC-MAX", clsStats.get(MetricName.NOC).getMax());
-        values.put("NOC-TTL", clsStats.get(MetricName.NOC).getTotal());
-        values.put("CID-MAX", clsStats.get(MetricName.CID).getMax());
-        values.put("CID-TTL", clsStats.get(MetricName.CID).getTotal());
-        values.put("COD-MAX", clsStats.get(MetricName.COD).getMax());
-        values.put("COD-TTL", clsStats.get(MetricName.COD).getTotal());
-        values.put("DIT-MAX", clsStats.get(MetricName.DIT).getMax());
-        values.put("DIT-TTL", clsStats.get(MetricName.DIT).getTotal());
-        values.put("NOP-MAX", clsStats.get(MetricName.NOP).getMax());
-        values.put("NOP-TTL", clsStats.get(MetricName.NOP).getTotal());
+        values.put("NOC-MAX", clsStats.get(NOC).getMax());
+        values.put("NOC-TTL", clsStats.get(NOC).getTotal());
+        values.put("CID-MAX", clsStats.get(CID).getMax());
+        values.put("CID-TTL", clsStats.get(CID).getTotal());
+        values.put("COD-MAX", clsStats.get(COD).getMax());
+        values.put("COD-TTL", clsStats.get(COD).getTotal());
+        values.put("DIT-MAX", clsStats.get(DIT).getMax());
+        values.put("DIT-TTL", clsStats.get(DIT).getTotal());
+        values.put("NOP-MAX", clsStats.get(NOP).getMax());
+        values.put("NOP-TTL", clsStats.get(NOP).getTotal());
 
         values.putAll(dlcMetrics.asMap());
         values.putAll(propertyMetrics.asMap());
+
+        values.put("CAL-TIME", Long.toString(calculationTime));
         return values;
     }
 }

@@ -7,7 +7,25 @@ import java.text.DecimalFormat;
 import java.util.LinkedHashMap;
 import java.util.Map;
 
-import static org.semanticweb.owlapi.model.ClassExpressionType.*;
+import static org.semanticweb.owlapi.model.ClassExpressionType.DATA_ALL_VALUES_FROM;
+import static org.semanticweb.owlapi.model.ClassExpressionType.DATA_EXACT_CARDINALITY;
+import static org.semanticweb.owlapi.model.ClassExpressionType.DATA_HAS_VALUE;
+import static org.semanticweb.owlapi.model.ClassExpressionType.DATA_MAX_CARDINALITY;
+import static org.semanticweb.owlapi.model.ClassExpressionType.DATA_MIN_CARDINALITY;
+import static org.semanticweb.owlapi.model.ClassExpressionType.DATA_SOME_VALUES_FROM;
+import static org.semanticweb.owlapi.model.ClassExpressionType.OBJECT_ALL_VALUES_FROM;
+import static org.semanticweb.owlapi.model.ClassExpressionType.OBJECT_COMPLEMENT_OF;
+import static org.semanticweb.owlapi.model.ClassExpressionType.OBJECT_EXACT_CARDINALITY;
+import static org.semanticweb.owlapi.model.ClassExpressionType.OBJECT_HAS_SELF;
+import static org.semanticweb.owlapi.model.ClassExpressionType.OBJECT_HAS_VALUE;
+import static org.semanticweb.owlapi.model.ClassExpressionType.OBJECT_INTERSECTION_OF;
+import static org.semanticweb.owlapi.model.ClassExpressionType.OBJECT_MAX_CARDINALITY;
+import static org.semanticweb.owlapi.model.ClassExpressionType.OBJECT_MIN_CARDINALITY;
+import static org.semanticweb.owlapi.model.ClassExpressionType.OBJECT_ONE_OF;
+import static org.semanticweb.owlapi.model.ClassExpressionType.OBJECT_SOME_VALUES_FROM;
+import static org.semanticweb.owlapi.model.ClassExpressionType.OBJECT_UNION_OF;
+import static org.semanticweb.owlapi.model.ClassExpressionType.OWL_CLASS;
+import static org.semanticweb.owlapi.model.ClassExpressionType.values;
 
 public class DLCMetrics {
     private Map<ClassExpressionType, Integer> map;

@@ -1,11 +1,11 @@
 package edu.monash.infotech.owl2metrics.module;
 
+import au.com.bytecode.opencsv.CSVWriter;
 import com.google.common.base.Function;
 import com.google.common.collect.Maps;
 import com.google.common.collect.Sets;
 import com.google.common.collect.SortedSetMultimap;
 import com.google.common.collect.TreeMultimap;
-import com.opencsv.CSVWriter;
 import dk.aaue.sna.alg.centrality.CentralityMeasure;
 import dk.aaue.sna.alg.centrality.CentralityResult;
 import dk.aaue.sna.alg.centrality.DegreeCentrality;
@@ -23,20 +23,34 @@ import org.jgrapht.traverse.DepthFirstIterator;
 import org.semanticweb.owlapi.apibinding.OWLManager;
 import org.semanticweb.owlapi.io.FileDocumentSource;
 import org.semanticweb.owlapi.io.OWLOntologyDocumentSource;
-import org.semanticweb.owlapi.model.*;
+import org.semanticweb.owlapi.model.IRI;
+import org.semanticweb.owlapi.model.OWLClass;
+import org.semanticweb.owlapi.model.OWLDataFactory;
+import org.semanticweb.owlapi.model.OWLOntology;
+import org.semanticweb.owlapi.model.OWLOntologyCreationException;
 import org.semanticweb.owlapi.vocab.OWLRDFVocabulary;
 
 import javax.annotation.Nullable;
 import java.io.File;
 import java.io.FileWriter;
 import java.io.IOException;
-import java.util.*;
+import java.util.Collection;
+import java.util.Collections;
+import java.util.Map;
+import java.util.Set;
+import java.util.SortedSet;
 
 import static com.google.common.collect.Collections2.transform;
 import static com.google.common.collect.ObjectArrays.concat;
+import static edu.monash.infotech.owl2metrics.translate.OWL2Graph.NODE_ANON_TYPE_NAME;
 import static java.lang.Boolean.valueOf;
 import static java.lang.Math.max;
-import static org.semanticweb.owlapi.vocab.OWLRDFVocabulary.*;
+import static org.semanticweb.owlapi.vocab.OWLRDFVocabulary.OWL_CLASS;
+import static org.semanticweb.owlapi.vocab.OWLRDFVocabulary.OWL_DIFFERENT_FROM;
+import static org.semanticweb.owlapi.vocab.OWLRDFVocabulary.OWL_SAME_AS;
+import static org.semanticweb.owlapi.vocab.OWLRDFVocabulary.OWL_THING;
+import static org.semanticweb.owlapi.vocab.OWLRDFVocabulary.RDFS_SUBCLASS_OF;
+import static org.semanticweb.owlapi.vocab.OWLRDFVocabulary.RDFS_SUB_PROPERTY_OF;
 
 /**
  * @author Yuan-Fang Li
@@ -48,6 +62,7 @@ public class NodeMetricsCollector {
     private Map<NamedNode, Set<NamedEntityMetric<? extends Comparable>>> entityMetricMap;
 
     public static final Function<NamedEntityMetric<?>, String> VALUE_FUNCTION = new Function<NamedEntityMetric<?>, String>() {
+        @Override
         public String apply(@Nullable NamedEntityMetric<?> input) {
             return input.getValue().toString();
         }
@@ -85,7 +100,7 @@ public class NodeMetricsCollector {
             if (++i % 10000 == 0) {
                 logger.info("Handled " + i + " nodes.");
             }
-            if (valueOf(node.getProperties().get(OWL2Graph.NODE_ANON_TYPE_NAME).toString()) ||
+            if (valueOf(node.getProperties().get(NODE_ANON_TYPE_NAME).toString()) ||
                     node.getName().equals(OWLRDFVocabulary.OWL_THING.toString())) {
                 continue;
             }
@@ -287,7 +302,7 @@ public class NodeMetricsCollector {
             DirectedGraph<NamedNode, NamedParamEdge> graph = owl2Graph.loadOWLOntology(source, true);
             Map<NamedNode, Set<NamedEntityMetric<? extends Comparable>>> map = collectMetrics(graph, owl2Graph.getOntology());
             for (NamedNode node : map.keySet()) {
-                if (valueOf(node.getProperties().get(OWL2Graph.NODE_ANON_TYPE_NAME).toString())) {
+                if (valueOf(node.getProperties().get(NODE_ANON_TYPE_NAME).toString())) {
                     continue;
                 }
                 Set<NamedEntityMetric<? extends Comparable>> metricSet = map.get(node);
@@ -363,7 +378,7 @@ public class NodeMetricsCollector {
 
         for (NamedNode n : metrics.keySet()) {
             if (n.getTypes().contains(OWL_CLASS.toString()) &&
-                    !valueOf(n.getProperties().getProperty(OWL2Graph.NODE_ANON_TYPE_NAME))) {
+                    !valueOf(n.getProperties().getProperty(NODE_ANON_TYPE_NAME))) {
                 String clsIri = n.getName().substring(1, n.getName().length() - 1);
                 if (!classesInSignature.contains(factory.getOWLClass(IRI.create(clsIri)))) {
                     continue;

@@ -14,7 +14,18 @@ import org.semanticweb.owlapi.apibinding.OWLManager;
 import org.semanticweb.owlapi.io.OWLObjectRenderer;
 import org.semanticweb.owlapi.io.OWLOntologyDocumentSource;
 import org.semanticweb.owlapi.io.ToStringRenderer;
-import org.semanticweb.owlapi.model.*;
+import org.semanticweb.owlapi.model.AxiomType;
+import org.semanticweb.owlapi.model.IRI;
+import org.semanticweb.owlapi.model.OWLAxiom;
+import org.semanticweb.owlapi.model.OWLClass;
+import org.semanticweb.owlapi.model.OWLDataProperty;
+import org.semanticweb.owlapi.model.OWLDatatype;
+import org.semanticweb.owlapi.model.OWLIndividual;
+import org.semanticweb.owlapi.model.OWLObjectProperty;
+import org.semanticweb.owlapi.model.OWLOntology;
+import org.semanticweb.owlapi.model.OWLOntologyCreationException;
+import org.semanticweb.owlapi.model.OWLOntologyManager;
+import org.semanticweb.owlapi.model.OWLPropertyExpression;
 import org.semanticweb.owlapi.util.SimpleRenderer;
 import org.semanticweb.owlapi.vocab.OWLRDFVocabulary;
 import uk.ac.manchester.cs.owl.owlapi.OWLOntologyIRIMapperImpl;
@@ -22,7 +33,11 @@ import uk.ac.manchester.cs.owl.owlapi.OWLOntologyIRIMapperImpl;
 import java.util.Map;
 import java.util.Set;
 
-import static org.semanticweb.owlapi.vocab.OWLRDFVocabulary.*;
+import static org.semanticweb.owlapi.vocab.OWLRDFVocabulary.OWL_DATATYPE;
+import static org.semanticweb.owlapi.vocab.OWLRDFVocabulary.OWL_DATA_PROPERTY;
+import static org.semanticweb.owlapi.vocab.OWLRDFVocabulary.OWL_INDIVIDUAL;
+import static org.semanticweb.owlapi.vocab.OWLRDFVocabulary.OWL_OBJECT_PROPERTY;
+import static org.semanticweb.owlapi.vocab.OWLRDFVocabulary.RDF_PROPERTY;
 
 /**
  * @author Yuan-Fang Li
@@ -37,6 +52,7 @@ public class OWL2GraphJGraphTImpl extends AbstractOWL2GraphImpl<DirectedGraph<Na
         super();
     }
 
+    @Override
     public DirectedGraph<NamedNode, NamedParamEdge> loadOWLOntology(OWLOntology ontology, boolean includeImports) {
         int axiomCount = 0;
         this.ontology = ontology;
@@ -85,10 +101,10 @@ public class OWL2GraphJGraphTImpl extends AbstractOWL2GraphImpl<DirectedGraph<Na
     }
 
     protected void createNodeRelAdder() {
-
         adder = new NodeRelAddingVisitor<NamedNode, NamedParamEdge>(this);
     }
 
+    @Override
     public DirectedGraph<NamedNode, NamedParamEdge> loadOWLOntology(OWLOntologyDocumentSource source, boolean includeImports, Map<String, String> iriMapping) throws OWLOntologyCreationException {
         return loadOWLOntology(loadOntology(source, iriMapping), includeImports);
     }
@@ -111,10 +127,12 @@ public class OWL2GraphJGraphTImpl extends AbstractOWL2GraphImpl<DirectedGraph<Na
         return owlOntologyManager.loadOntologyFromOntologyDocument(source);
     }
 
+    @Override
     public DirectedGraph<NamedNode, NamedParamEdge> getGraph() {
         return graph;
     }
 
+    @Override
     public NamedNode findOrCreateNode(String name, String type, boolean isAnonymous) {
         NamedNode vertex;
         NamedNode node = makeNode(name, type, isAnonymous);
@@ -127,6 +145,7 @@ public class OWL2GraphJGraphTImpl extends AbstractOWL2GraphImpl<DirectedGraph<Na
         return vertex;
     }
 
+    @Override
     public NamedNode createNode(String name, String type, boolean isAnonymous) {
         NamedNode node = makeNode(name, type, isAnonymous);
         graph.addVertex(node);
@@ -140,6 +159,7 @@ public class OWL2GraphJGraphTImpl extends AbstractOWL2GraphImpl<DirectedGraph<Na
         return node;
     }
 
+    @Override
     public NamedParamEdge createRelationship(NamedNode source, NamedNode target, String typeAndName) {
         if (!graph.containsEdge(source, target, typeAndName)) {
             NamedParamEdge edge = graph.addEdge(source, target);
@@ -151,6 +171,7 @@ public class OWL2GraphJGraphTImpl extends AbstractOWL2GraphImpl<DirectedGraph<Na
         }
     }
 
+    @Override
     public NamedParamEdge findRelationship(NamedNode source, NamedNode target, String relationshipName) {
         Set<NamedParamEdge> allEdges = graph.getAllEdges(source, target);
         if (null != allEdges) {
@@ -163,6 +184,7 @@ public class OWL2GraphJGraphTImpl extends AbstractOWL2GraphImpl<DirectedGraph<Na
         return null;
     }
 
+    @Override
     public <T extends OWLPropertyExpression> NamedParamEdge createRelationship(NamedNode source, NamedNode target, T property) {
         NamedParamEdge relationship = createRelationship(source, target, property.toString());
         String type;
@@ -178,14 +200,17 @@ public class OWL2GraphJGraphTImpl extends AbstractOWL2GraphImpl<DirectedGraph<Na
         return relationship;
     }
 
+    @Override
     public void shutdown() {
         this.graph = new IndexedDirectedGraphImpl(NamedParamEdge.class, 0);
     }
 
+    @Override
     public NamedNode createNode(String name) {
         return new NamedNode(name);
     }
 
+    @Override
     public NamedNode setProperty(NamedNode namedNode, String key, String value) {
         namedNode.setProperty(key, value);
         return namedNode;

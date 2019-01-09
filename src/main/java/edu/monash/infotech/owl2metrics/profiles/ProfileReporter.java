@@ -4,7 +4,13 @@ import org.semanticweb.owlapi.metrics.DLExpressivity;
 import org.semanticweb.owlapi.metrics.OWLMetric;
 import org.semanticweb.owlapi.metrics.OWLMetricManager;
 import org.semanticweb.owlapi.model.OWLOntology;
-import org.semanticweb.owlapi.profiles.*;
+import org.semanticweb.owlapi.profiles.OWL2DLProfile;
+import org.semanticweb.owlapi.profiles.OWL2ELProfile;
+import org.semanticweb.owlapi.profiles.OWL2Profile;
+import org.semanticweb.owlapi.profiles.OWL2QLProfile;
+import org.semanticweb.owlapi.profiles.OWL2RLProfile;
+import org.semanticweb.owlapi.profiles.OWLProfile;
+import org.semanticweb.owlapi.profiles.OWLProfileReport;
 
 import java.util.Collections;
 import java.util.LinkedHashMap;
