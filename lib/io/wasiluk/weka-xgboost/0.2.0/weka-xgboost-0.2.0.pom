@@ -1,0 +1,36 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <modelVersion>4.0.0</modelVersion>
+
+    <groupId>io.wasiluk</groupId>
+    <artifactId>weka-xgboost</artifactId>
+    <version>0.2.0</version>
+
+    <dependencies>
+        <dependency>
+            <groupId>nz.ac.waikato.cms.weka</groupId>
+            <artifactId>weka-dev</artifactId>
+            <version>3.9.1</version>
+        </dependency>
+        <dependency>
+            <groupId>ml.dmlc</groupId>
+            <artifactId>xgboost4j</artifactId>
+            <version>0.80</version>
+        </dependency>
+        <dependency>
+            <groupId>biz.k11i</groupId>
+            <artifactId>xgboost-predictor</artifactId>
+            <version>0.3.0</version>
+        </dependency>
+    </dependencies>
+    <repositories>
+        <repository>
+            <id>bintray-komiya-atsushi-maven</id>
+            <url>http://dl.bintray.com/komiya-atsushi/maven</url>
+        </repository>
+    </repositories>
+
+
+</project>
